@@ -5,11 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Slide Video Maker</title>
     <style>
-        body { margin: 0; font-family: sans-serif; background: #1a1a1a; color: #fff; text-align: center; padding-top: 20px; }
-        #canvas-container { width: 640px; height: 360px; margin: 20px auto; background: #000; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        canvas { width: 100%; height: 100%; display: block; }
-        .controls { margin: 20px; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+#canvas-container { 
+            width: 800px; 
+            height: 450px; 
+            margin: 20px auto; 
+            background: #000; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
@@ -25,15 +27,17 @@
     <div id="canvas-container"></div>
 
     <script>
-        // --- ここにJavaScriptをすべてまとめました ---
-        const uploadInput = document.getElementById('image-upload');
+const uploadInput = document.getElementById('image-upload');
         const startBtn = document.getElementById('start-btn');
         let textures = [];
         let currentTextureIndex = 0;
         let mesh, material, renderer, scene, camera;
         let clock = new THREE.Clock();
 
-        // 1. 画像がアップロードされた時の処理
+        // ★ 解像度の設定（フルHD: 1920 * 1080 に変更）
+        const VIDEO_WIDTH = 1920;
+        const VIDEO_HEIGHT = 1080;
+
         uploadInput.addEventListener('change', (e) => {
             const files = e.target.files;
             if (!files.length) return;
@@ -46,55 +50,54 @@
             Array.from(files).forEach((file, index) => {
                 const url = URL.createObjectURL(file);
                 loader.load(url, (texture) => {
-                    // 画像の縦横比を維持するための設定
                     texture.minFilter = THREE.LinearFilter;
-                    textures[index] = texture; // 順番を維持して格納
+                    textures[index] = texture;
                     loadedCount++;
 
                     if (loadedCount === files.length) {
                         startBtn.disabled = false;
-                        // すべて読み込んだらThree.jsを起動
                         initThree(); 
                     }
                 });
             });
         });
 
-        // 2. Three.js の初期化と画面構築（確実に定義）
         function initThree() {
             const container = document.getElementById('canvas-container');
-            container.innerHTML = ''; // 古いキャンバスをクリア
+            container.innerHTML = '';
 
-            // シーンとカメラの準備
             scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(45, 640 / 360, 0.1, 1000);
+            
+            // ★ アスペクト比を 16:9（1920/1080）に固定
+            camera = new THREE.PerspectiveCamera(45, VIDEO_WIDTH / VIDEO_HEIGHT, 0.1, 1000);
             camera.position.z = 5;
 
-            // レンダラーの準備
             renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-            renderer.setSize(640, 360);
+            
+            // ★ レンダラーに高解像度を設定
+            renderer.setSize(VIDEO_WIDTH, VIDEO_HEIGHT);
+            
+            // ★ 画面上での見た目が大きくなりすぎないようCSSで制御
+            renderer.domElement.style.width = '100%';
+            renderer.domElement.style.height = '100%';
+            
             container.appendChild(renderer.domElement);
 
-            // 画像を表示する板（プレーン）を作成
             const geometry = new THREE.PlaneGeometry(5.33, 3); // 16:9 の比率
             material = new THREE.MeshBasicMaterial({ map: textures[0], transparent: true });
             mesh = new THREE.Mesh(geometry, material);
             scene.add(mesh);
 
-            clock.getDelta(); // クロックのリセット
+            clock.getDelta();
             animate();
         }
 
-        // 3. アニメーション（4秒ごとに画像を切り替える簡易ループ）
         function animate() {
             requestAnimationFrame(animate);
 
             const elapsedTime = clock.getElapsedTime();
             
-            // 簡易的なズームイン効果（動画らしさを出す）
-            if (mesh) {
-                mesh.scale.set(1 + (elapsedTime % 4) * 0.03, 1 + (elapsedTime % 4) * 0.03, 1);
-            }
+            // ★ 画像が近づく（ズームする）コードを削除しました（動かない設定）
 
             // 4秒ごとに次の画像へ切り替え
             if (elapsedTime > 0 && Math.floor(elapsedTime) % 4 === 0) {
@@ -107,7 +110,6 @@
             renderer.render(scene, camera);
         }
 
-        // 4. 動画キャプチャ・ダウンロード処理
         startBtn.addEventListener('click', () => {
             const canvas = renderer.domElement;
             const stream = canvas.captureStream(30); // 30fps
@@ -126,7 +128,6 @@
                 startBtn.disabled = false;
             };
 
-            // 録画開始（とりあえず画像枚数×4秒分を録画）
             mediaRecorder.start();
             startBtn.textContent = '録画中...';
             startBtn.disabled = true;
