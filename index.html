@@ -2,39 +2,46 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Slide Video Maker</title>
     <style>
-<style>
-        /* 背景をすべて黒に設定 */
-        body { 
-            margin: 0; 
-            font-family: sans-serif; 
-            background: #000; 
-            color: #fff; 
-            text-align: center; 
-            padding: 20px 10px; /* スマホ用に左右に少し余白 */
+        /* 画面全体の背景を完全な黒に */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            color: #fff;
+            font-family: sans-serif;
             box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
         }
         
         h1 {
-            font-size: 1.8rem; /* スマホでも大きすぎないサイズ */
-            margin-bottom: 15px;
+            font-size: 1.6rem;
+            margin: 10px 0;
         }
 
         .controls { 
-            margin: 0 auto 20px auto; 
+            margin-bottom: 20px; 
             padding: 15px; 
             background: #111; 
             border-radius: 8px; 
-            display: inline-block;
-            max-width: 100%; /* 画面からはみ出さないように */
-            box-sizing: border-box;
+            text-align: center;
+            max-width: 90%;
         }
 
         input[type="file"] {
-            max-width: 100%;
             margin-bottom: 10px;
+            display: block;
+            width: 100%;
         }
 
         button { 
@@ -45,18 +52,17 @@
             color: #000;
             border: none; 
             border-radius: 4px; 
-            width: auto;
         }
         button:disabled { background: #444; color: #888; cursor: not-allowed; }
 
-        /* ★ ここを大幅に修正：スマホでもPCでも画面中央に16:9でフィットさせる */
+        /* PC・スマホ共通：常に画面中央に16:9で配置されるコンテナ */
         #canvas-container { 
-            width: 100%; 
-            max-width: 800px;       /* PCでの最大サイズ */
-            aspect-ratio: 16 / 9;   /* 常に16:9の比率を維持 */
-            margin: 20px auto; 
+            width: 90%; 
+            max-width: 800px;  /* PCでの最大サイズ */
+            aspect-ratio: 16 / 9;   /* 常に16:9を維持 */
             background: #000; 
-            box-shadow: 0 4px 20px rgba(255,255,255,0.05); 
+            margin: 0 auto;
+            position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -68,7 +74,6 @@
             height: 100% !important; 
             display: block; 
         }
-    </style>
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
@@ -91,6 +96,7 @@
         let mesh, material, renderer, scene, camera;
         let clock = new THREE.Clock();
 
+        // 出力動画の解像度（16:9 フルHDに固定）
         const VIDEO_WIDTH = 1920;
         const VIDEO_HEIGHT = 1080;
 
@@ -115,20 +121,29 @@
             });
         });
 
+        // ★ 横長・縦長を判別し、16:9の枠内に完全に収める計算に修正
         function resizeMeshToTexture(texture) {
             if (!texture || !texture.image) return;
+            
             const imgAspect = texture.image.width / texture.image.height;
-            const baseWidth = 5.33;
-            const baseHeight = 3.0;
-            const screenAspect = baseWidth / baseHeight;
+            
+            // 画面の基準サイズ（カメラの視野に合わせた仮想の大きさ）
+            const screenHeight = 3.0;
+            const screenWidth = screenHeight * (VIDEO_WIDTH / VIDEO_HEIGHT); // 5.333...
+            const screenAspect = VIDEO_WIDTH / VIDEO_HEIGHT;
+
             let finalWidth, finalHeight;
+
             if (imgAspect > screenAspect) {
-                finalWidth = baseWidth;
-                finalHeight = baseWidth / imgAspect;
+                // 画像が画面枠より「横長」の場合：横幅を基準に合わせる
+                finalWidth = screenWidth;
+                finalHeight = screenWidth / imgAspect;
             } else {
-                finalHeight = baseHeight;
-                finalWidth = baseHeight * imgAspect;
+                // 画像が画面枠より「縦長」または「正方形」の場合：縦幅を基準に合わせる
+                finalHeight = screenHeight;
+                finalWidth = screenHeight * imgAspect;
             }
+
             mesh.geometry.dispose();
             mesh.geometry = new THREE.PlaneGeometry(finalWidth, finalHeight);
         }
@@ -136,28 +151,49 @@
         function initThree() {
             const container = document.getElementById('canvas-container');
             container.innerHTML = '';
+            
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x000000); // Three.jsの背景も黒
+            scene.background = new THREE.Color(0x000000); // 背景を完全な黒に
+            
             camera = new THREE.PerspectiveCamera(45, VIDEO_WIDTH / VIDEO_HEIGHT, 0.1, 1000);
-            camera.position.z = 5;
+            camera.position.set(0, 0, 3.62); // 画面にぴったり収まるカメラ位置に固定
+            camera.lookAt(0, 0, 0);
+
             renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
             renderer.setSize(VIDEO_WIDTH, VIDEO_HEIGHT);
+            
+            // CSSによる表示サイズ制御
             renderer.domElement.style.width = '100%';
             renderer.domElement.style.height = '100%';
             container.appendChild(renderer.domElement);
+
             const geometry = new THREE.PlaneGeometry(1, 1);
             material = new THREE.MeshBasicMaterial({ map: textures[0], transparent: true });
             mesh = new THREE.Mesh(geometry, material);
             scene.add(mesh);
+
             resizeMeshToTexture(textures[0]);
+            
+            // ★ ウィンドウサイズが変わった時（スマホの向き変更など）のズレを防止
+            window.addEventListener('resize', onWindowResize, false);
+
             clock.getDelta();
             animate();
+        }
+
+        function onWindowResize() {
+            if (camera && renderer) {
+                // 内部解像度は 1920x1080 を維持したまま、表示位置を再計算
+                camera.aspect = VIDEO_WIDTH / VIDEO_HEIGHT;
+                camera.updateProjectionMatrix();
+                renderer.setSize(VIDEO_WIDTH, VIDEO_HEIGHT);
+            }
         }
 
         function animate() {
             requestAnimationFrame(animate);
             const elapsedTime = clock.getElapsedTime();
-            // ズームなし（固定表示）
+            
             if (elapsedTime > 0 && Math.floor(elapsedTime) % 4 === 0) {
                 if (textures.length > 1) {
                     const nextIndex = Math.floor(elapsedTime / 4) % textures.length;
