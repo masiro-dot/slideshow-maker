@@ -5,70 +5,93 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Slide Video Maker</title>
     <style>
-        /* 画面全体・すべての要素を完全な黒に強制 */
-        html, body {
+        /* 画面全体の背景を「絶対的な黒」に強制固定（PCの余白対策） */
+        html {
+            background-color: #000 !important;
+        }
+
+        body {
             margin: 0;
-            padding: 0;
+            padding: 30px 0;
             width: 100%;
-            height: 100%;
+            min-height: 100vh; /* 画面の縦幅いっぱいに背景を広げる */
             background-color: #000 !important;
             color: #fff;
             font-family: sans-serif;
             box-sizing: border-box;
-            overflow-x: hidden;
-        }
-
-        body {
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px 0;
+            overflow-x: hidden;
         }
         
         h1 {
-            font-size: 1.5rem;
-            margin: 0 0 15px 0;
+            font-size: 1.8rem;
+            margin: 0 0 25px 0;
         }
 
+        /* コントロールエリアの調整（ボタン同士を離す） */
         .controls { 
-            margin-bottom: 20px; 
-            padding: 15px; 
+            margin-bottom: 35px; /* 画像との間隔を広げる */
+            padding: 20px; 
             background: #111; 
             border-radius: 8px; 
             text-align: center;
             width: 90%;
-            max-width: 400px;
+            max-width: 450px;
             box-sizing: border-box;
             z-index: 10;
+            box-shadow: 0 4px 15px rgba(255,255,255,0.02);
         }
 
+        /* ファイル選択ボタンを大きく押しやすく */
+        .file-input-wrapper {
+            margin-bottom: 25px; /* ★ダウンロードボタンとの距離をしっかり離す */
+            text-align: left;
+        }
+        
         input[type="file"] {
-            margin-bottom: 12px;
             display: block;
             width: 100%;
+            padding: 12px;
+            background: #222;
+            color: #fff;
+            border: 1px dashed #444;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 15px;
+            cursor: pointer;
         }
 
-        button { 
-            padding: 12px 24px; 
+        /* 生成・ダウンロードボタン */
+        .action-btn { 
+            padding: 14px 28px; 
             font-size: 16px; 
             font-weight: bold;
             cursor: pointer; 
             background: #fff; 
             color: #000;
             border: none; 
-            border-radius: 4px; 
+            border-radius: 6px; 
             width: 100%;
+            transition: background 0.2s;
         }
-        button:disabled { background: #444; color: #888; cursor: not-allowed; }
+        .action-btn:hover {
+            background: #ddd;
+        }
+        .action-btn:disabled { 
+            background: #444; 
+            color: #888; 
+            cursor: not-allowed; 
+        }
 
-        /* プレビュー枠：16:9固定を廃止し、画像の比率に合わせる */
+        /* プレビュー枠：画像の比率に合わせる */
         #canvas-container { 
             width: 100%;
             max-width: 960px;
-            /* スマホで縦長画像が画面縦からはみ出さないよう、最大高さを制限 */
             max-height: 60vh; 
             background-color: #000 !important;
-            margin: auto 0; /* 上下中央配置 */
+            margin: 0 auto;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -77,20 +100,17 @@
         canvas { 
             max-width: 100%;
             max-height: 100%;
-            object-fit: contain; /* 画像の比率を維持して最大化 */
+            object-fit: contain; 
             display: block;
             background-color: #000 !important;
         }
 
+        /* PC（画面幅768px以上）での個別レイアウト */
         @media (min-width: 768px) {
-            body { padding-top: 30px; }
-            h1 { font-size: 2rem; }
-            .controls { width: auto; max-width: none; }
-            button { width: auto; }
-            #canvas-container { 
-                width: 90%; 
-                max-height: 65vh;
-            }
+            body { padding-top: 50px; }
+            h1 { font-size: 2.2rem; margin-bottom: 35px; }
+            .controls { width: 100%; max-width: 600px; padding: 25px; }
+            #canvas-container { width: 90%; max-height: 55vh; }
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -100,8 +120,10 @@
     <h1>Slide Video Maker</h1>
     
     <div class="controls">
-        <input type="file" id="image-upload" multiple accept="image/*">
-        <button id="start-btn" disabled>動画を生成・ダウンロード</button>
+        <div class="file-input-wrapper">
+            <input type="file" id="image-upload" multiple accept="image/*">
+        </div>
+        <button id="start-btn" class="action-btn" disabled>動画を生成・ダウンロード</button>
     </div>
 
     <div id="canvas-container"></div>
@@ -135,7 +157,6 @@
             });
         });
 
-        // 画像の「本来の比率」に合わせて画面（レンダラー・カメラ）をリサイズする
         function updateSceneSize(texture) {
             if (!texture || !texture.image) return;
 
@@ -143,24 +164,18 @@
             const imgHeight = texture.image.height;
             const imgAspect = imgWidth / imgHeight;
 
-            // 1. レンダラー（Canvas内部）の解像度を画像の比率に合わせる
-            // 縦横の長い方を基準に高解像度化
             if (imgWidth >= imgHeight) {
                 renderer.setSize(1920, 1920 / imgAspect);
             } else {
                 renderer.setSize(1080 * imgAspect, 1080);
             }
 
-            // 2. カメラのアスペクト比も画像に同期
             camera.aspect = imgAspect;
             camera.updateProjectionMatrix();
 
-            // 3. 画像を貼り付ける板（Mesh）も画像と同じ比率（サイズ1）にする
             mesh.geometry.dispose();
             mesh.geometry = new THREE.PlaneGeometry(imgAspect, 1);
             
-            // 4. カメラの距離を調整して、画像が画面ぴったりに映るようにする
-            // PerspectiveCamera(45) で高さ1の物体をぴったり収める距離は約1.207
             camera.position.set(0, 0, 1.207);
             camera.lookAt(0, 0, 0);
         }
@@ -172,7 +187,6 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x000000);
             
-            // 初期設定（サイズは後で更新される）
             camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
             renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
             renderer.setClearColor(0x000000, 1.0);
@@ -184,7 +198,6 @@
             mesh = new THREE.Mesh(geometry, material);
             scene.add(mesh);
 
-            // 最初の画像の比率を適用
             updateSceneSize(textures[0]);
 
             clock.getDelta();
@@ -201,7 +214,6 @@
                     if (currentTextureIndex !== nextIndex) {
                         currentTextureIndex = nextIndex;
                         material.map = textures[currentTextureIndex];
-                        // 画像切り替え時に比率を自動更新
                         updateSceneSize(textures[currentTextureIndex]);
                     }
                 }
@@ -213,7 +225,6 @@
             const canvas = renderer.domElement;
             const stream = canvas.captureStream(30);
             
-            // 主要なブラウザで動くビデオコーデックを設定
             let options = { mimeType: 'video/webm' };
             if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
                 options = { mimeType: 'video/webm;codecs=vp9' };
@@ -227,18 +238,4 @@
                 const videoURL = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = videoURL;
-                a.download = 'slideshow.webm';
-                a.click();
-                startBtn.textContent = '動画を生成・ダウンロード';
-                startBtn.disabled = false;
-            };
-            mediaRecorder.start();
-            startBtn.textContent = '録画中...';
-            startBtn.disabled = true;
-            setTimeout(() => {
-                mediaRecorder.stop();
-            }, textures.length * 4000);
-        });
-    </script>
-</body>
-</html>
+                a.download = '
