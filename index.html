@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Slide Video Maker</title>
     <style>
+<style>
         /* 画面全体の背景を完全な黒に */
         html, body {
             margin: 0;
@@ -25,40 +26,44 @@
         }
         
         h1 {
-            font-size: 1.6rem;
+            font-size: 1.5rem;
             margin: 10px 0;
         }
 
         .controls { 
-            margin-bottom: 20px; 
+            margin-bottom: 25px; 
             padding: 15px; 
             background: #111; 
             border-radius: 8px; 
             text-align: center;
-            max-width: 90%;
+            width: 90%;
+            max-width: 400px; /* ボタンエリアが広がりすぎないように */
+            box-sizing: border-box;
         }
 
         input[type="file"] {
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             display: block;
             width: 100%;
         }
 
         button { 
-            padding: 10px 20px; 
+            padding: 12px 24px; 
             font-size: 16px; 
+            font-weight: bold;
             cursor: pointer; 
             background: #fff; 
             color: #000;
             border: none; 
             border-radius: 4px; 
+            width: 100%; /* スマホで押しやすいように広く */
         }
         button:disabled { background: #444; color: #888; cursor: not-allowed; }
 
-        /* PC・スマホ共通：常に画面中央に16:9で配置されるコンテナ */
+        /* --- プレビュー枠の設定 --- */
         #canvas-container { 
-            width: 90%; 
-            max-width: 800px;  /* PCでの最大サイズ */
+            width: 100%;           /* ★デフォルト（スマホ）では画面横幅いっぱい */
+            max-width: 960px;      /* ★PCでの最大サイズを少し大きめ（960px）に変更 */
             aspect-ratio: 16 / 9;   /* 常に16:9を維持 */
             background: #000; 
             margin: 0 auto;
@@ -74,6 +79,27 @@
             height: 100% !important; 
             display: block; 
         }
+
+        /* --- PC・タブレット用の個別調整（画面幅が768px以上のとき） --- */
+        @media (min-width: 768px) {
+            body {
+                padding-top: 40px;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+            .controls {
+                width: auto;
+                max-width: none;
+            }
+            button {
+                width: auto; /* PCではボタンを適切なサイズに */
+            }
+            #canvas-container {
+                width: 85%; /* PCでは少し左右に上品な余白を持たせる */
+            }
+        }
+    </style>
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
