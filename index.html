@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Slide Video Maker</title>
+    <style>
+        body { margin: 0; font-family: sans-serif; background: #1a1a1a; color: #fff; text-align: center; }
+        #canvas-container { width: 640px; height: 360px; margin: 20px auto; background: #000; }
+        canvas { width: 100%; height: 100%; }
+        .controls { margin: 20px; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <h1>3D Slide Video Maker</h1>
+    
+    <div class="controls">
+        <input type="file" id="image-upload" multiple accept="image/*">
+        <button id="start-btn" disabled>動画を生成・ダウンロード</button>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
